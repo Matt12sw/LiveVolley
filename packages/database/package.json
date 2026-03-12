@@ -1,0 +1,32 @@
+{
+  "name": "@live-volley/database",
+  "version": "1.0.0",
+  "description": "Schéma Prisma et migrations pour LiveVolley",
+  "private": true,
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./client": {
+      "import": "./dist/client/index.js",
+      "require": "./dist/client/index.js"
+    }
+  },
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "node --require ts-node/register ./seed.ts",
+    "db:studio": "prisma studio",
+    "format": "prisma format"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.0.0",
+    "typescript": "^5.3.0"
+  }
+}

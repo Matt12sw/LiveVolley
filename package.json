@@ -1,0 +1,27 @@
+{
+  "name": "live-volley",
+  "version": "1.0.0",
+  "description": "Platform de streaming et suivi de matches de volleyball en direct",
+  "private": true,
+  "author": "LiveVolley Team",
+  "license": "MIT",
+  "PackageManager": "pnpm@8.0.0",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "type-check": "turbo run type-check",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:push": "turbo run db:push",
+    "db:generate": "turbo run db:generate",
+    "db:migrate": "turbo run db:migrate"
+  },
+  "devDependencies": {
+    "eslint": "^8.54.0",
+    "prettier": "^3.0.0",
+    "turbo": "^1.10.0",
+    "typescript": "^5.3.0"
+  }
+}

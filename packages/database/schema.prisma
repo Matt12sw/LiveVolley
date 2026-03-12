@@ -1,0 +1,518 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTH & USERS
+// ============================================================================
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  username      String     @unique
+  password      String?
+  displayName   String?
+  avatar        String?
+  bio           String?
+  role          UserRole   @default(USER)
+  status        UserStatus @default(ACTIVE)
+  
+  // Relations
+  memberships   TeamMember[]
+  clubMemberships ClubMember[]
+  matches       Match[]    @relation("createdBy")
+  chats         Chat[]
+  chatMessages  ChatMessage[]
+  notifications Notification[]
+  scores        Score[]
+  reviews       ReviewScore[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([email])
+  @@index([username])
+}
+
+enum UserRole {
+  ADMIN
+  MODERATOR
+  COACH
+  PLAYER
+  SPECTATOR
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+  SUSPENDED
+}
+
+// ============================================================================
+// CLUBS & TEAMS
+// ============================================================================
+
+model Club {
+  id            String     @id @default(cuid())
+  name          String
+  slug          String     @unique
+  description   String?
+  logo          String?
+  banner        String?
+  website       String?
+  phone         String?
+  email         String?
+  city          String?
+  country       String?
+  foundedYear   Int?
+  
+  // Relations
+  teams         Team[]
+  members       ClubMember[]
+  competitions  Competition[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([slug])
+}
+
+model ClubMember {
+  id            String     @id @default(cuid())
+  clubId        String
+  userId        String
+  role          ClubMemberRole @default(MEMBER)
+  
+  club          Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime   @default(now())
+  
+  @@unique([clubId, userId])
+  @@index([clubId])
+  @@index([userId])
+}
+
+enum ClubMemberRole {
+  OWNER
+  ADMIN
+  COACH
+  MEMBER
+}
+
+model Team {
+  id            String     @id @default(cuid())
+  name          String
+  slug          String     @unique
+  description   String?
+  logo          String?
+  clubId        String
+  color         String?
+  coach         String?
+  
+  // Relations
+  club          Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  members       TeamMember[]
+  matches       Match[]    @relation("homeTeam")
+  awayMatches   Match[]    @relation("awayTeam")
+  competitions  CompetitionTeam[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([clubId])
+  @@index([slug])
+}
+
+model TeamMember {
+  id            String     @id @default(cuid())
+  teamId        String
+  userId        String
+  number        Int?
+  position      String?
+  role          TeamMemberRole @default(PLAYER)
+  
+  team          Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stats         PlayerStats?
+  
+  createdAt     DateTime   @default(now())
+  
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+enum TeamMemberRole {
+  COACH
+  CAPTAIN
+  PLAYER
+  SUBSTITUTE
+  RESERVE
+}
+
+model Player {
+  id            String     @id @default(cuid())
+  firstName     String
+  lastName      String
+  birthDate     DateTime?
+  nationality   String?
+  height        Int?
+  weight        Int?
+  position      String
+  
+  stats         PlayerStats[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model PlayerStats {
+  id            String     @id @default(cuid())
+  teamMemberId  String     @unique
+  playerId      String?
+  gamesPlayed   Int        @default(0)
+  points        Int        @default(0)
+  aces          Int        @default(0)
+  blocks        Int        @default(0)
+  
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  player        Player?    @relation(fields: [playerId], references: [id])
+  
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([teamMemberId])
+}
+
+// ============================================================================
+// COMPETITIONS & MATCHES
+// ============================================================================
+
+model Competition {
+  id            String     @id @default(cuid())
+  name          String
+  slug          String     @unique
+  description   String?
+  logo          String?
+  clubId        String?
+  season        String
+  startDate     DateTime
+  endDate       DateTime?
+  status        CompetitionStatus @default(ACTIVE)
+  
+  club          Club?      @relation(fields: [clubId], references: [id])
+  teams         CompetitionTeam[]
+  matches       Match[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([clubId])
+  @@index([slug])
+}
+
+enum CompetitionStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model CompetitionTeam {
+  id              String    @id @default(cuid())
+  competitionId   String
+  teamId          String
+  
+  competition     Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team            Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  @@unique([competitionId, teamId])
+  @@index([competitionId])
+  @@index([teamId])
+}
+
+model Match {
+  id            String     @id @default(cuid())
+  title         String
+  slug          String     @unique
+  description   String?
+  competitionId String
+  homeTeamId    String
+  awayTeamId    String
+  scheduledAt   DateTime
+  startedAt     DateTime?
+  endedAt       DateTime?
+  status        MatchStatus @default(SCHEDULED)
+  
+  venue         String?
+  maxSpectators Int?
+  
+  // Streaming
+  streamingUrl  String?
+  rtmpKey       String?
+  thumbnail     String?
+  
+  // Relations
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  homeTeam      Team        @relation("homeTeam", fields: [homeTeamId], references: [id])
+  awayTeam      Team        @relation("awayTeam", fields: [awayTeamId], references: [id])
+  createdBy     User        @relation("createdBy", fields: [createdById], references: [id])
+  createdById   String
+  
+  scores        Score[]
+  chats         Chat[]
+  streaming     Streaming?
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([competitionId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([slug])
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+model Score {
+  id            String     @id @default(cuid())
+  matchId       String
+  homeTeamScore Int        @default(0)
+  awayTeamScore Int        @default(0)
+  set           Int        @default(1)
+  period        String?    // e.g., "first", "second", "third"
+  scoredById    String?
+  
+  match         Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  scoredBy      User?      @relation(fields: [scoredById], references: [id])
+  reviews       ReviewScore[]
+  
+  createdAt     DateTime   @default(now())
+  
+  @@index([matchId])
+  @@index([scoredById])
+}
+
+model ReviewScore {
+  id            String     @id @default(cuid())
+  scoreId       String
+  userId        String
+  approve       Boolean
+  
+  score         Score      @relation(fields: [scoreId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id])
+  
+  @@unique([scoreId, userId])
+  @@index([scoreId])
+}
+
+// ============================================================================
+// STREAMING
+// ============================================================================
+
+model Streaming {
+  id            String     @id @default(cuid())
+  matchId       String     @unique
+  title         String
+  description   String?
+  thumbnail     String?
+  
+  // Streaming details
+  rtmpIngestion String?
+  hlsPlayback   String?
+  viewers       Int        @default(0)
+  duration      Int        @default(0) // in seconds
+  
+  // Recording
+  recordingUrl  String?
+  recordingSize Int?       // in bytes
+  
+  status        StreamingStatus @default(SETUP)
+  
+  match         Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([matchId])
+}
+
+enum StreamingStatus {
+  SETUP
+  LIVE
+  RECORDING
+  COMPLETED
+  FAILED
+}
+
+// ============================================================================
+// CHAT & MESSAGING
+// ============================================================================
+
+model Chat {
+  id            String     @id @default(cuid())
+  matchId       String
+  name          String?
+  description   String?
+  isPublic      Boolean    @default(true)
+  maxMessages   Int        @default(10000) // Keep last N messages
+  
+  match         Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  messages      ChatMessage[]
+  users         User[]
+  moderators    ChatModerator[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([matchId])
+}
+
+model ChatMessage {
+  id            String     @id @default(cuid())
+  chatId        String
+  userId        String
+  content       String
+  isEdited      Boolean    @default(false)
+  isFlagged     Boolean    @default(false)
+  flagReason    String?
+  
+  chat          Chat       @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions     ChatReaction[]
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([chatId])
+  @@index([userId])
+}
+
+model ChatReaction {
+  id            String     @id @default(cuid())
+  messageId     String
+  emoji         String
+  count         Int        @default(1)
+  
+  message       ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  @@unique([messageId, emoji])
+  @@index([messageId])
+}
+
+model ChatModerator {
+  id            String     @id @default(cuid())
+  chatId        String
+  userId        String
+  permissions   String     @default("ban,mute,delete")
+  
+  chat          Chat       @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  
+  @@unique([chatId, userId])
+  @@index([chatId])
+}
+
+// ============================================================================
+// MODERATION
+// ============================================================================
+
+model Report {
+  id            String     @id @default(cuid())
+  type          ReportType
+  reason        String
+  description   String?
+  messageId     String?
+  userId        String?
+  status        ReportStatus @default(PENDING)
+  resolution    String?
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@index([status])
+}
+
+enum ReportType {
+  MESSAGE
+  USER
+  MATCH
+  SPAM
+  ABUSE
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+  APPEALED
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id            String     @id @default(cuid())
+  userId        String
+  type          NotificationType
+  title         String
+  message       String
+  data          Json?
+  read          Boolean    @default(false)
+  
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime   @default(now())
+  
+  @@index([userId])
+  @@index([read])
+}
+
+enum NotificationType {
+  MATCH_STARTING
+  MATCH_LIVE
+  MATCH_SCORE
+  CHAT_MESSAGE
+  USER_MENTIONED
+  MATCH_ENDED
+  TEAM_UPDATE
+  SYSTEM
+}
+
+// ============================================================================
+// API & AUDIT
+// ============================================================================
+
+model AuditLog {
+  id            String     @id @default(cuid())
+  action        String
+  entity        String
+  entityId      String
+  changes       Json?
+  userId        String?
+  ipAddress     String?
+  
+  createdAt     DateTime   @default(now())
+  
+  @@index([entityId])
+  @@index([userId])
+  @@index([createdAt])
+}

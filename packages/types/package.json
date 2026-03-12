@@ -1,0 +1,17 @@
+{
+  "name": "@live-volley/types",
+  "version": "1.0.0",
+  "description": "Types TypeScript partagés pour LiveVolley",
+  "private": true,
+  "main": "dist/index.ts",
+  "exports": {
+    ".": "./dist/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
